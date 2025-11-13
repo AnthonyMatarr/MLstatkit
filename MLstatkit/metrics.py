@@ -20,11 +20,26 @@ def _binarize(proba: np.ndarray, threshold: float) -> np.ndarray:
 
 
 ################ ADDED OPEN ################
-def ici(y_true, y_proba):
-    prob_true, prob_pred = calibration_curve(
-        y_true, y_proba, n_bins=3, strategy="uniform"
-    )
-    return np.mean(np.abs(prob_true - prob_pred))
+def ici_w_thresholds(y_true, y_proba, thresholds):
+    """
+    Computes ICI given custom bin thresholds
+    """
+    thresholds = np.asarray(thresholds, dtype=float).flatten()
+    n_bins = len(thresholds) + 1
+    bin_indices = np.digitize(y_proba, thresholds, right=False)  # 0,1,...,n_bins-1
+
+    event_rates = []
+    mean_preds = []
+    for b in range(n_bins):
+        mask = bin_indices == b
+        if mask.sum() == 0:
+            event_rates.append(np.nan)
+            mean_preds.append(np.nan)
+        else:
+            event_rates.append(np.nanmean(y_true[mask]))
+            mean_preds.append(np.nanmean(y_proba[mask]))
+    ici = np.nanmean(np.abs(np.asarray(event_rates) - np.asarray(mean_preds)))
+    return ici
 
 
 ################ ADDED CLOSE ################
@@ -53,7 +68,14 @@ def get_metric_fn(
         )
     ################ ADDED OPEN ################
     if m == "ici":
-        return lambda y, y_pred: ici(np.asarray(y), np.asarray(y_pred))
+
+        def ici_metric(y, y_pred, **kwargs):
+            bin_thresholds = kwargs.get("bin_thresholds", None)
+            if bin_thresholds is None:
+                raise ValueError("ICI metric requires thresholds to be passed.")
+            return ici_w_thresholds(np.asarray(y), np.asarray(y_pred), bin_thresholds)
+
+        return ici_metric
 
     if m == "brier":
         return lambda y, y_pred: brier_score_loss(np.asarray(y), np.asarray(y_pred))

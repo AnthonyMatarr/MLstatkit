@@ -6,8 +6,10 @@ from .metrics import get_metric_fn
 try:
     from tqdm import tqdm
 except Exception:  # 讓 tqdm 非強制
+
     def tqdm(x, **kwargs):
         return x
+
 
 def Bootstrapping(
     y_true,
@@ -17,7 +19,9 @@ def Bootstrapping(
     confidence_level: float = 0.95,
     threshold: float = 0.5,
     average: str = "macro",
-    random_state: int = 0
+    random_state: int = 0,
+    show_progress: bool = True,  # Edited to add this flag for tqdm
+    **metric_kwargs,  # Edited to add **metric_kwargs
 ) -> Tuple[float, float, float]:
     """
     Return (original_score, ci_lower, ci_upper).
@@ -28,16 +32,21 @@ def Bootstrapping(
 
     rng = np.random.RandomState(random_state)
     metric_fn = get_metric_fn(metric_str, threshold, average)
-
-    original_score = metric_fn(y_true, y_prob)
+    # Edited to add **metric_kwargs
+    original_score = metric_fn(y_true, y_prob, **metric_kwargs)
 
     scores = []
     n = len(y_true)
-    for _ in tqdm(range(n_bootstraps), desc=f"Bootstrapping {metric_str}"):
+    for _ in tqdm(
+        range(n_bootstraps),
+        desc=f"Bootstrapping {metric_str}",
+        disable=not show_progress,
+    ):  ## Added disable
         idx = rng.randint(0, n, n)
         if np.unique(y_true[idx]).size < 2:
             continue
-        scores.append(metric_fn(y_true[idx], y_prob[idx]))
+        # Edited to add **metric_kwargs
+        scores.append(metric_fn(y_true[idx], y_prob[idx], **metric_kwargs))
 
     if len(scores) == 0:
         raise RuntimeError("All bootstrap samples were degenerate (single class).")
