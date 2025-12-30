@@ -64,7 +64,7 @@ def get_metric_fn(
         return lambda y, y_pred: f1_score(
             np.asarray(y),
             (np.asarray(y_pred) >= threshold).astype(int),
-            average=average,
+            average=average,  # type: ignore
         )
     ################ ADDED OPEN ################
     if m == "ici":
@@ -79,6 +79,11 @@ def get_metric_fn(
 
     if m == "brier":
         return lambda y, y_pred: brier_score_loss(np.asarray(y), np.asarray(y_pred))
+
+    if m == "event_rate":
+        # For event rate, we don't use y_pred at all - just compute mean of y_true
+        # But the signature still needs y_pred for consistency with Bootstrapping
+        return lambda y, y_pred: np.mean(np.asarray(y))
     ################ ADDED CLOSE ################
 
     if m == "accuracy":
@@ -90,14 +95,14 @@ def get_metric_fn(
         return lambda y, y_pred: recall_score(
             np.asarray(y),
             (np.asarray(y_pred) >= threshold).astype(int),
-            average=average,
+            average=average,  # type: ignore
         )
 
     if m == "precision":
         return lambda y, y_pred: precision_score(
             np.asarray(y),
             (np.asarray(y_pred) >= threshold).astype(int),
-            average=average,
+            average=average,  # type: ignore
         )
 
     if m in {"roc_auc", "auc"}:
