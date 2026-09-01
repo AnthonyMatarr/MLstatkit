@@ -11,6 +11,7 @@ from sklearn.metrics import (
     precision_recall_curve,
     auc,
     brier_score_loss,  # ADDED
+    r2_score,  # ADDED
 )
 from sklearn.calibration import calibration_curve  # ADDED
 
@@ -56,7 +57,7 @@ def get_metric_fn(
       - 'roc_auc'
       - 'average_precision'
       - 'pr_auc' (area under PR curve via trapezoid on precision-recall)
-      - ADDED: 'ici', 'brier'
+      - ADDED: 'ici', 'brier', 'r2'
     """
     m = (metric_str or "").lower()
 
@@ -84,6 +85,12 @@ def get_metric_fn(
         # For event rate, we don't use y_pred at all - just compute mean of y_true
         # But the signature still needs y_pred for consistency with Bootstrapping
         return lambda y, y_pred: np.mean(np.asarray(y))
+
+    if m == "r2":
+        return lambda y, y_pred: r2_score(
+            y_true=np.asarray(y), y_pred=np.asarray(y_pred)
+        )
+
     ################ ADDED CLOSE ################
 
     if m == "accuracy":
